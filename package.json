@@ -1,0 +1,21 @@
+{
+  "name": "@vx.rs/pannonico-binaries",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "lint": "oxlint --deny-warnings .",
+    "lint:fix": "oxlint . --fix",
+    "test": "node --test test/*.test.ts",
+    "validate-release": "node scripts/validate-release.ts"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.58.0",
+    "oxlint": "^1.73.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

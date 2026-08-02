@@ -1,0 +1,23 @@
+{
+  "name": "@vx.rs/pannonico-wasi",
+  "version": "0.0.0",
+  "description": "Platform-independent Pannonico Free WASI fallback",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vx-rs/pannonico-binaries.git",
+    "directory": "packages/wasi"
+  },
+  "files": [
+    "pannonico.wasm",
+    "LICENSE",
+    "NOTICE",
+    "COMMERCIAL-LICENSE.md",
+    "README.md",
+    "SHA256SUMS"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@vx.rs/pannonico-bin-darwin-x64",
+  "version": "0.0.0",
+  "description": "Pannonico Free binary for macOS x64",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vx-rs/pannonico-binaries.git",
+    "directory": "packages/darwin-x64"
+  },
+  "bin": {
+    "pannonico": "./bin/pannonico"
+  },
+  "files": [
+    "bin/",
+    "LICENSE",
+    "NOTICE",
+    "COMMERCIAL-LICENSE.md",
+    "README.md",
+    "SHA256SUMS"
+  ],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  }
+}
