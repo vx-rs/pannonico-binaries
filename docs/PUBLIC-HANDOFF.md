@@ -47,7 +47,9 @@ release.
 Each target package receives one executable or WASI module from the verified
 `unpacked` tree. It also receives its exact checksum, public package manifest,
 README, and legal files. The importer does not consume the Phase 14 `npm`
-placeholder.
+placeholder. The package manifest carries schema-v1 `free` edition, exact
+target, and exact payload-path identity so the Phase 16 launcher can validate
+metadata without inferring it from an npm installation layout.
 
 ## Sanitization boundary
 

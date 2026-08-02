@@ -1,3 +1,5 @@
+import { packagePayloadPath } from "./release-targets.ts";
+
 import type { ReleaseTarget } from "./release-targets.ts";
 
 /** packageManifest creates one target package manifest from the fixed public identity. */
@@ -37,12 +39,17 @@ export const packageManifest = (
       url: "git+https://github.com/vx-rs/pannonico-binaries.git",
       directory: `packages/${target.packageDirectory}`,
     },
+    pannonico: {
+      schemaVersion: 1,
+      edition: "free",
+      target: target.target,
+      payload: packagePayloadPath(target),
+    },
     publishConfig: { access: "public", registry: "https://registry.npmjs.org" },
   };
   if (target.platform && target.architecture) {
     manifest.os = [target.platform];
     manifest.cpu = [target.architecture];
-    manifest.bin = { pannonico: `./bin/${target.binaryName}` };
   }
   return manifest;
 };
@@ -61,7 +68,8 @@ export const packageReadme = (target: ReleaseTarget): string => {
   return (
     `# Pannonico binary for ${target.packageDirectory}\n\n` +
     `This package contains the native \`pannonico\` binary built for \`${target.target}\`. It is\n` +
-    "installed automatically and consumed by `@vx.rs/pannonico` on this platform.\n\n" +
+    "installed automatically and consumed by `@vx.rs/pannonico` on this platform. It does not\n" +
+    "declare a command entrypoint, so execution always passes through launcher verification.\n\n" +
     "Install `@vx.rs/pannonico` instead of this target package directly.\n"
   );
 };

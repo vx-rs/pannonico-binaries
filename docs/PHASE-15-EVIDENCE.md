@@ -73,3 +73,9 @@ and reviewed locally but was not executed because no branch or tag was pushed.
 
 No remote was mutated. No tag, hosted release, npm package, repository dispatch,
 signature, notarization, or publication was created.
+
+Phase 16 subsequently extended each generated target manifest with explicit
+schema-v1 Free edition, target, and payload identity. The package-local
+`SHA256SUMS` remains the payload digest authority, and the Phase 15 importer,
+validator, template test, and exact package-file allowlist cover the added
+metadata before any launcher consumes it.

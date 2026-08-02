@@ -8,9 +8,6 @@
     "url": "git+https://github.com/vx-rs/pannonico-binaries.git",
     "directory": "packages/win32-arm64"
   },
-  "bin": {
-    "pannonico": "./bin/pannonico.exe"
-  },
   "files": [
     "bin/",
     "LICENSE",
@@ -28,5 +25,11 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
+  },
+  "pannonico": {
+    "schemaVersion": 1,
+    "edition": "free",
+    "target": "windows-arm64",
+    "payload": "bin/pannonico.exe"
   }
 }

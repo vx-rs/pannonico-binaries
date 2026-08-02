@@ -1,0 +1,114 @@
+name: Publish Pannonico binaries
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+concurrency:
+  group: binaries-release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.18.0
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts --loglevel error
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm test
+      - name: Validate the exact imported release
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: npm run validate-release -- "${RELEASE_TAG#v}"
+      - name: Check all exact target package tarballs
+        run: |
+          for target in linux-x64 linux-arm64 darwin-x64 darwin-arm64 win32-x64 win32-arm64 wasi; do
+            npm pack --dry-run --json --ignore-scripts "packages/$target"
+          done
+
+  github-release:
+    needs: validate
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Create the validated public GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            public-release/assets/* \
+            public-release/RELEASE_NOTES.md \
+            public-release/SHA256SUMS \
+            public-release/metadata/* \
+            release-manifest.json \
+            --notes-file public-release/RELEASE_NOTES.md \
+            --title "Pannonico ${RELEASE_TAG#v}" \
+            --verify-tag
+
+  preflight-npm:
+    needs: validate
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.18.0
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Prove every immutable target version is unpublished
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          for target in linux-x64 linux-arm64 darwin-x64 darwin-arm64 win32-x64 win32-arm64 wasi; do
+            package_root="packages/$target"
+            package_name="$(node -p "require('./$package_root/package.json').name")"
+            package_version="$(node -p "require('./$package_root/package.json').version")"
+            if [[ "v$package_version" != "$RELEASE_TAG" ]]; then
+              echo "::error::$package_name version does not match $RELEASE_TAG."
+              exit 1
+            fi
+            set +e
+            output="$(npm view "$package_name@$package_version" version --registry=https://registry.npmjs.org 2>&1)"
+            status=$?
+            set -e
+            if [[ $status -eq 0 ]]; then
+              echo "::error::$package_name@$package_version is already published."
+              exit 1
+            fi
+            if [[ "$output" != *"E404"* ]]; then
+              echo "$output"
+              echo "::error::Unable to prove that $package_name@$package_version is unpublished."
+              exit 1
+            fi
+          done
+
+  publish-npm:
+    needs: [github-release, preflight-npm]
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [linux-x64, linux-arm64, darwin-x64, darwin-arm64, win32-x64, win32-arm64, wasi]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.18.0
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Publish target package with trusted publishing
+        run: npm publish "packages/${{ matrix.target }}" --provenance --access public

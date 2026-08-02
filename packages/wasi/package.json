@@ -19,5 +19,11 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
+  },
+  "pannonico": {
+    "schemaVersion": 1,
+    "edition": "free",
+    "target": "wasi",
+    "payload": "pannonico.wasm"
   }
 }
