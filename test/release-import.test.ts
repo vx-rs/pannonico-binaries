@@ -2,9 +2,13 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
   readlinkSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -13,7 +17,7 @@ import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { importRelease } from "../scripts/import-release.ts";
+import { importRelease, installStagedRelease } from "../scripts/import-release.ts";
 import { canonicalJSON } from "../scripts/package-files.ts";
 import { goCanonicalJSON } from "../scripts/release-contract.ts";
 import { archiveName, RELEASE_TARGETS } from "../scripts/release-targets.ts";
@@ -137,6 +141,42 @@ test("Expect a symlinked public repository boundary to be rejected", () => {
     );
   } finally {
     fixture.remove();
+  }
+});
+
+test("Expect an incomplete install rollback to retain its recovery copy outside staging", () => {
+  const root = mkdtempSync(join(REPOSITORY_ROOT, ".pannonico-rollback-test-"));
+  const repository = join(root, "repository");
+  const stagingRoot = join(root, "staging");
+  const stagedRepository = join(stagingRoot, "repository");
+  const backupRoot = `${stagingRoot}-backup`;
+  try {
+    for (const directory of [repository, stagedRepository])
+      mkdirSync(directory, { recursive: true });
+    for (const directory of ["packages", "public-release"]) {
+      mkdirSync(join(repository, directory));
+      mkdirSync(join(stagedRepository, directory));
+    }
+    for (const name of ["package.json", "release-manifest.json"]) {
+      writeFileSync(join(repository, name), `old ${name}\n`);
+      writeFileSync(join(stagedRepository, name), `new ${name}\n`);
+    }
+    assert.throws(
+      () =>
+        installStagedRelease(repository, stagedRepository, stagingRoot, {
+          exists: existsSync,
+          remove: rmSync,
+          rename: (source, destination) => {
+            if (source === join(stagedRepository, "packages")) throw new Error("install failed");
+            if (source === join(backupRoot, "package.json")) throw new Error("restore failed");
+            renameSync(source, destination);
+          },
+        }),
+      /rollback was incomplete; recovery files remain/,
+    );
+    assert.equal(readFileSync(join(backupRoot, "package.json"), "utf8"), "old package.json\n");
+  } finally {
+    rmSync(root, { force: true, recursive: true });
   }
 });
 

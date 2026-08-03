@@ -54,6 +54,13 @@ export type ImportReleaseOptions = {
   source: string;
 };
 
+/** InstallOperations supplies the filesystem mutations used by the rollback boundary. */
+export type InstallOperations = {
+  exists: typeof existsSync;
+  remove: typeof rmSync;
+  rename: typeof renameSync;
+};
+
 const CURRENT_FILE = fileURLToPath(import.meta.url);
 const REPOSITORY_ROOT = resolve(dirname(CURRENT_FILE), "..");
 const LEGAL_FILES = ["LICENSE", "NOTICE", "COMMERCIAL-LICENSE.md"] as const;
@@ -233,38 +240,72 @@ const stagePublicRelease = (
   writeFileSync(join(publicRoot, "SHA256SUMS"), checksumDocument, { mode: 0o644 });
 };
 
-/** installStagedRelease replaces only importer-owned paths and rolls them back on failure. */
-const installStagedRelease = (
+/** defaultInstallOperations applies release installation to the host filesystem. */
+const defaultInstallOperations: InstallOperations = {
+  exists: existsSync,
+  remove: rmSync,
+  rename: renameSync,
+};
+
+/**
+ * installStagedRelease replaces only importer-owned paths and rolls them back on failure.
+ * It retains the backup outside staging cleanup when rollback itself cannot complete.
+ */
+export const installStagedRelease = (
   repositoryRoot: string,
   stagedRepository: string,
   stagingRoot: string,
+  operations: InstallOperations = defaultInstallOperations,
 ): void => {
   const names = ["package.json", "packages", "public-release", "release-manifest.json"];
-  if (existsSync(join(stagedRepository, "package-lock.json")))
+  if (operations.exists(join(stagedRepository, "package-lock.json")))
     names.splice(1, 0, "package-lock.json");
-  const backupRoot = join(stagingRoot, "backup");
+  const backupRoot = `${stagingRoot}-backup`;
   mkdirSync(backupRoot, { mode: 0o755 });
   const backedUp: string[] = [];
   const installed: string[] = [];
   try {
     for (const name of names) {
       const destination = join(repositoryRoot, name);
-      if (existsSync(destination)) {
-        renameSync(destination, join(backupRoot, name));
+      if (operations.exists(destination)) {
+        operations.rename(destination, join(backupRoot, name));
         backedUp.push(name);
       }
-      renameSync(join(stagedRepository, name), destination);
+      operations.rename(join(stagedRepository, name), destination);
       installed.push(name);
     }
   } catch (error) {
-    for (const name of installed.reverse())
-      rmSync(join(repositoryRoot, name), { force: true, recursive: true });
-    for (const name of backedUp.reverse())
-      renameSync(join(backupRoot, name), join(repositoryRoot, name));
+    const rollbackErrors: string[] = [];
+    for (const name of installed.reverse()) {
+      try {
+        operations.remove(join(repositoryRoot, name), { force: true, recursive: true });
+      } catch (rollbackError) {
+        rollbackErrors.push(
+          `remove ${name}: ${rollbackError instanceof Error ? rollbackError.message : rollbackError}`,
+        );
+      }
+    }
+    for (const name of backedUp.reverse()) {
+      try {
+        operations.rename(join(backupRoot, name), join(repositoryRoot, name));
+      } catch (rollbackError) {
+        rollbackErrors.push(
+          `restore ${name}: ${rollbackError instanceof Error ? rollbackError.message : rollbackError}`,
+        );
+      }
+    }
+    if (rollbackErrors.length > 0) {
+      const installReason = error instanceof Error ? error.message : error;
+      throw new Error(
+        `Install staged public release failed (${installReason}) and rollback was incomplete; recovery files remain at ${backupRoot}: ${rollbackErrors.join("; ")}`,
+      );
+    }
+    operations.remove(backupRoot, { force: true, recursive: true });
     throw new Error(
       `Install staged public release: ${error instanceof Error ? error.message : error}`,
     );
   }
+  operations.remove(backupRoot, { force: true, recursive: true });
 };
 
 /** parseArguments accepts only the required named source argument. */
