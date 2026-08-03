@@ -60,8 +60,9 @@ export const packageReadme = (target: ReleaseTarget): string => {
     return (
       "# Pannonico WASI compatibility fallback\n\n" +
       "This package contains the platform-independent WASI build of `pannonico`. It is\n" +
-      "installed automatically and consumed by `@vx.rs/pannonico` only when no compatible\n" +
-      "native binary can run. The fallback is slower than a native binary.\n\n" +
+      "installed automatically and consumed by `@vx.rs/pannonico` when the host is unsupported,\n" +
+      "the optional native package is absent, or `PANNONICO_FORCE_WASI=1` is set. The fallback\n" +
+      "is slower than a native binary. Installed-package integrity failures do not trigger it.\n\n" +
       "Install `@vx.rs/pannonico` instead of this package directly.\n"
     );
   }

@@ -32,7 +32,7 @@ jobs:
           done
 
   github-release:
-    needs: validate
+    needs: [validate, preflight-npm]
     permissions:
       contents: write
     runs-on: ubuntu-latest

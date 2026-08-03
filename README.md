@@ -13,9 +13,11 @@ pannonico --help
 ```
 
 Native packages cover Linux, macOS, and Windows on x64 and arm64. The
-platform-independent WASI package is the fallback for unsupported or blocked
-native execution. Package publication and launcher selection are implemented
-in later release phases.
+platform-independent WASI package is selected automatically when the host is
+unsupported or its optional native package is absent. Set
+`PANNONICO_FORCE_WASI=1` to select it explicitly when native execution is
+blocked. Installed-package metadata or checksum failures stop the launcher
+instead of triggering fallback.
 
 See [the public handoff contract](./docs/PUBLIC-HANDOFF.md) before importing a
 release.
