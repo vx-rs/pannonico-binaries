@@ -8,11 +8,11 @@ npm package trees. It never rebuilds or modifies an executable.
 ## Required input
 
 The importer accepts `dist/free/v<version>` only after the source repository has
-run its `release-builder verify`, `test-host`, and `test-wasi` commands. The
-directory must contain schema-v1 metadata for the Free edition, the fixed seven
-target matrix, a full hexadecimal source commit, and `sourceTag` equal to
-`v<version>`. V1 artifacts must record `signed: false`, a null signature type,
-and `notarized: false`.
+run its composite `release-builder candidate` command. The directory must
+contain schema-v1 metadata for the Free edition, the fixed seven target matrix,
+a full hexadecimal source commit, and `sourceTag` equal to `v<version>`. V1
+artifacts must record `signed: false`, a null signature type, and
+`notarized: false`.
 
 The importer independently checks the exact Phase 14 directory shape, regular
 file and non-symlink constraints, canonical `SHA256SUMS`, archive hashes and
@@ -70,16 +70,17 @@ policy, Git, and other private source files cannot enter through recursive copy.
 
 ## Local procedure
 
-1. Build and verify the matching tagged Free distribution in `pannonico-go`.
-2. Run the importer from this repository:
+1. Run the composite candidate from the tagged `pannonico-go` checkout:
 
    ```sh
-   node scripts/import-release.ts --source ../pannonico-go/dist/free/vX.Y.Z
+   go run -mod=vendor ./cmd/release-builder candidate \
+     --edition free --version X.Y.Z --out dist \
+     --launcher ../pannonico-node
    ```
 
-3. Run `npm run format:check`, `npm run lint`, `npm test`, and
+2. Run `npm run format:check`, `npm run lint`, `npm test`, and
    `npm run validate-release -- X.Y.Z`.
-4. Review `git diff`, the filtered notes, `release-manifest.json`, and package
+3. Review `git diff`, the filtered notes, `release-manifest.json`, and package
    tarball contents before any commit, tag, or remote action.
 
 Do not create a public tag or hosted release until the private source workflow

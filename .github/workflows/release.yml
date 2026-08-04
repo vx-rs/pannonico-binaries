@@ -111,4 +111,36 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - name: Publish target package with trusted publishing
-        run: npm publish "packages/${{ matrix.target }}" --provenance --access public
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          dist_tag=latest
+          if [[ "$version" == *-* ]]; then dist_tag=next; fi
+          npm publish "packages/${{ matrix.target }}" \
+            --provenance --access public --tag "$dist_tag"
+
+  dispatch-launcher:
+    needs: publish-npm
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch exact launcher publication
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          WRAPPER_REPOSITORY_TOKEN: ${{ secrets.VX_WRAPPER_REPOSITORY_TOKEN }}
+        run: |
+          if [[ -z "$WRAPPER_REPOSITORY_TOKEN" ]]; then
+            echo "::error::VX_WRAPPER_REPOSITORY_TOKEN is required to dispatch the launcher release."
+            exit 1
+          fi
+          version="${RELEASE_TAG#v}"
+          curl --fail-with-body --request POST \
+            --url https://api.github.com/repos/vx-rs/pannonico-node/dispatches \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $WRAPPER_REPOSITORY_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --data "{\"event_type\":\"binaries-published\",\"client_payload\":{\"version\":\"$version\",\"binaryRepositoryTag\":\"$RELEASE_TAG\"}}"
